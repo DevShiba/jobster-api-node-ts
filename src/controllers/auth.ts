@@ -4,7 +4,7 @@ import { BadRequestError, UnauthenticatedError } from "../errors";
 import { Request, Response } from "express";
 
 export const register = async(req : Request,res: Response)=>{
-
+    res.send('register route')
 }
 
 export const login = async(req: Request, res: Response)=>{

@@ -2,6 +2,9 @@ require("express-async-errors");
 import express, { Request, Response } from "express";
 import helmet from "helmet";
 
+import authRouter from "./routes/auth";
+import jobsRouter from "./routes/jobs";
+
 import connect from "./db/connect";
 
 const app = express();
@@ -10,6 +13,9 @@ app.set("trust proxy", 1);
 
 app.use(express.json());
 app.use(helmet());
+
+app.use('/api/v1/auth', authRouter)
+app.use('/api/v1/jobs', jobsRouter)
 
 const port = process.env.PORT || 5000;
 
