@@ -57,7 +57,22 @@ export const getAllJobs = async (req: CustomRequest, res: Response) => {
   res.status(StatusCodes.OK).json({ jobs, totalJobs, numOfPages });
 };
 
-export const getJob = async (req: Request, res: Response) => {};
+export const getJob = async (req: CustomRequest, res: Response) => {
+  const {
+    user: { userId },
+    params: { id: jobId },
+  } = req;
+
+  const job = await Job.find({
+    _id: jobId,
+    createdBy: userId,
+  })
+
+  if(!job){
+    throw new NotFoundError(`Job with id ${jobId} not found`)
+  }
+  res.status(StatusCodes.OK)
+};
 
 export const createJob = async (req: Request, res: Response) => {};
 
