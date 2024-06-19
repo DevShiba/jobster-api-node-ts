@@ -66,18 +66,59 @@ export const getJob = async (req: CustomRequest, res: Response) => {
   const job = await Job.find({
     _id: jobId,
     createdBy: userId,
-  })
+  });
 
+  if (!job) {
+    throw new NotFoundError(`Job with id ${jobId} not found`);
+  }
+  res.status(StatusCodes.OK);
+};
+
+export const createJob = async (req: CustomRequest, res: Response) => {
+  req.body.createdBy = req.user.userId;
+  const job = await Job.create(req.body);
+  res.status(StatusCodes.CREATED).json(job);
+};
+
+export const updateJob = async (req: CustomRequest, res: Response) => {
+  const {
+    body: { company, position },
+    user: { userId },
+    params: { id: jobId },
+  } = req;
+
+  if (!company || !position) {
+    throw new BadRequestError("Company or position are required");
+  }
+
+  const job = await Job.findByIdAndUpdate(
+    { _id: jobId, createdBy: userId },
+    req.body,
+    { new: true, runValidators: true }
+  );
+
+  if (!job) {
+    throw new NotFoundError(`Job with id ${jobId} not found`);
+  }
+
+  res.status(StatusCodes.OK).json({ job });
+};
+
+export const deleteJob = async (req: CustomRequest, res: Response) => {
+  const {
+    user: { userId },
+    params: { id: jobId },
+  } = req;
+
+  const job = await Job.findOneAndDelete({
+    _id: jobId,
+    createdBy: userId,
+  })
   if(!job){
     throw new NotFoundError(`Job with id ${jobId} not found`)
   }
-  res.status(StatusCodes.OK)
+
+  res.status(StatusCodes.NO_CONTENT).json();
 };
-
-export const createJob = async (req: Request, res: Response) => {};
-
-export const updateJob = async (req: Request, res: Response) => {};
-
-export const deleteJob = async (req: Request, res: Response) => {};
 
 export const showStats = async (req: Request, res: Response) => {};
