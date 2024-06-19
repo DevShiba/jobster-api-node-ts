@@ -3,7 +3,7 @@ import { StatusCodes } from "http-status-codes";
 import { BadRequestError, NotFoundError } from "../errors";
 import mongoose from "mongoose";
 import { Request, Response } from "express";
-//import date-fns
+import { format, setYear, setMonth } from "date-fns";
 
 interface CustomRequest extends Request {
   user: { userId: string };
@@ -113,12 +113,67 @@ export const deleteJob = async (req: CustomRequest, res: Response) => {
   const job = await Job.findOneAndDelete({
     _id: jobId,
     createdBy: userId,
-  })
-  if(!job){
-    throw new NotFoundError(`Job with id ${jobId} not found`)
+  });
+  if (!job) {
+    throw new NotFoundError(`Job with id ${jobId} not found`);
   }
-
-  res.status(StatusCodes.NO_CONTENT).json();
+  res.status(StatusCodes.OK).send();
 };
 
-export const showStats = async (req: Request, res: Response) => {};
+interface Stats {
+  pending?: number;
+  interview?: number;
+  declined?: number;
+  [key: string]: number | undefined;
+}
+
+export const showStats = async (req: CustomRequest, res: Response) => {
+  let stats = await Job.aggregate([
+    { $match: { createdBy: new mongoose.Types.ObjectId(req.user.userId) } },
+    { $group: { _id: "$status", count: { $sum: 1 } } },
+  ]);
+
+  // Convert the array of stats into an object with status as keys
+  const statsObject: Stats = stats.reduce((acc: Stats, curr) => {
+    const { _id: status, count } = curr;
+    acc[status] = count;
+    return acc;
+  }, {});
+
+  const defaultStats: Stats = {
+    pending: statsObject.pending || 0,
+    interview: statsObject.interview || 0,
+    declined: statsObject.declined || 0,
+  };
+
+  let monthlyApplications = await Job.aggregate([
+    { $match: { createdBy: new mongoose.Types.ObjectId(req.user.userId) } },
+    {
+      $group: {
+        _id: {
+          year: { $year: { $toDate: "$createdAt" } },
+          month: { $month: { $toDate: "$createdAt" } },
+        },
+        count: { $sum: 1 },
+      },
+    },
+    { $sort: { "_id.year": -1, "_id.month": -1 } },
+    { $limit: 6 },
+  ]);
+
+  monthlyApplications = monthlyApplications
+    .map((item) => {
+      const {
+        _id: { year, month },
+        count,
+      } = item;
+      let date = new Date();
+      date = setYear(date, year);
+      date = setMonth(date, month - 1); 
+      const formattedDate = format(date, "MMM yyyy");
+      return { date: formattedDate, count };
+    })
+    .reverse();
+
+  res.status(StatusCodes.OK).json({ defaultStats, monthlyApplications });
+};
